@@ -40,6 +40,7 @@ GitHub Pages publishes `main` from `/`. The `CNAME` file binds the project site
 to `app.jysenglish.com`; Wix DNS must contain a CNAME from that host to
 `share1352.github.io`.
 
-Run `npm test` before publishing. Then verify `/`, `/study/`, and `/teacher/` over
-HTTPS. Never move the custom domain to an application repository without first
-accounting for shared browser storage.
+Run `npm test` before publishing. `npm run health` verifies `/`, `/study/`, and
+`/teacher/` over HTTPS; the scheduled workflow runs it twice daily. Never move
+the custom domain to an application repository without first accounting for
+shared browser storage.
