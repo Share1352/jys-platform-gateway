@@ -1,0 +1,7 @@
+{
+  "name": "jys-platform-gateway",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/verify.mjs"
+  }
+}
