@@ -206,7 +206,7 @@ async function scanReceipt(input){
   const result=await Tesseract.recognize(file,'eng',{logger:m=>{if(m.status==='recognizing text'&&Number.isFinite(m.progress)){scanProgress.style.width=`${Math.max(5,Math.round(m.progress*100))}%`;scanStatus.textContent=`Reading receipt… ${Math.round(m.progress*100)}%`}}});
   const text=result?.data?.text||'';pendingReceiptText=text;const total=detectReceiptTotal(text),date=detectReceiptDate(text),merchant=detectMerchant(text),category=receiptCategory(text);
   scanProgress.style.width='100%';scanStatus.textContent='Receipt read. Review the details before saving.';
-  openTx(true);if(total>0)trsd.value=String(total);if(date)tdate.value=date;tdesc.value=merchant;tcat.value=category;updateEffective();scanDlg.close();txDlg.showModal();
+  scanDlg.close();openTx(true);if(total>0)trsd.value=String(total);if(date)tdate.value=date;tdesc.value=merchant;tcat.value=category;updateEffective();
  }catch(err){console.error(err);scanStatus.textContent='Could not read this receipt. Try a clearer, flatter photo with good light.';scanProgress.style.width='0%'}finally{input.value=''}
 }
 function delTx(id){if(confirm('Delete transaction?')){S.tx=S.tx.filter(t=>t.id!==id);save()}}
