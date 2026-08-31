@@ -1,0 +1,10 @@
+{
+  "name": "TriLedger Finance",
+  "short_name": "TriLedger",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07101d",
+  "theme_color": "#0b1220",
+  "description": "Local-first personal and business expense tracker for EUR, RSD and VND.",
+  "icons": []
+}
