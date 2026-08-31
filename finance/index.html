@@ -1,1 +1,314 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1220"><link rel="manifest" href="manifest.webmanifest"><title>TriLedger Finance</title><style>:root{--b:#07101d;--p:#0d1727;--l:#22314a;--t:#eef4ff;--m:#8ea1be;--a:#4e8cff;--g:#51d29a;--r:#ff7882}*{box-sizing:border-box}body{margin:0;background:var(--b);color:var(--t);font:15px system-ui,-apple-system,sans-serif}header,main{max-width:920px;margin:auto;padding:18px}header{display:flex;justify-content:space-between;align-items:center}h1{margin:0;font-size:27px}h2{font-size:19px}button,input,select{font:inherit;border:1px solid var(--l);background:#0b1525;color:var(--t);border-radius:11px;padding:10px}button{cursor:pointer}.primary{background:var(--a);border-color:var(--a);font-weight:700}.tabs{display:flex;gap:7px;overflow:auto;padding:0 18px 10px;max-width:920px;margin:auto}.tabs button.active{background:#152640}.view{display:none}.view.active{display:block}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.card,.panel{border:1px solid var(--l);background:var(--p);border-radius:16px;padding:15px}.card small,.muted{color:var(--m)}.card strong{display:block;font-size:22px;margin-top:6px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.list{display:flex;flex-direction:column;gap:8px}.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid var(--l);background:var(--p);border-radius:13px;padding:12px}.row small{color:var(--m)}.amount{font-weight:800}.expense{color:#ffc1c6}.income{color:#9ce8c3}.forms{display:grid;grid-template-columns:1fr 1fr;gap:10px}.forms label{display:flex;flex-direction:column;gap:5px;color:#cbd7e8}.forms .full{grid-column:1/-1}.actions{display:flex;gap:8px}.danger{color:#ffb2b8}.pill{padding:4px 8px;border-radius:999px;background:#162640;font-size:12px;font-weight:700}.budgetbar{height:8px;border-radius:999px;background:#17243a;overflow:hidden;margin-top:8px}.budgetbar i{display:block;height:100%;background:var(--a)}dialog{width:min(520px,calc(100% - 22px));border:1px solid var(--l);border-radius:18px;background:#0b1525;color:var(--t);padding:18px}dialog::backdrop{background:#0009}.empty{padding:22px;text-align:center;color:var(--m);border:1px dashed var(--l);border-radius:13px}@media(max-width:650px){.grid{grid-template-columns:1fr}.forms{grid-template-columns:1fr}.forms .full{grid-column:auto}.toolbar{align-items:flex-start}.row{grid-template-columns:1fr auto}}</style></head><body><header><div><small class="muted">Personal + business finance</small><h1>TriLedger</h1></div><button class="primary" onclick="openTx()">+ Transaction</button></header><nav class="tabs"><button class="active" data-v="dash">Dashboard</button><button data-v="accounts">Accounts</button><button data-v="tx">Transactions</button><button data-v="budgets">Budgets</button><button data-v="settings">Settings</button></nav><main><section id="dash" class="view active"><div class="toolbar"><h2>Dashboard</h2><select id="base" onchange="S.settings.base=this.value;save()"><option>EUR</option><option>RSD</option><option>VND</option></select></div><div class="grid"><div class="card"><small>Total balance</small><strong id="total"></strong></div><div class="card"><small>This month income</small><strong id="income"></strong></div><div class="card"><small>This month expenses</small><strong id="expenses"></strong></div></div><h2>Accounts</h2><div id="dashAccounts" class="list"></div><h2>Recent transactions</h2><div id="recent" class="list"></div></section><section id="accounts" class="view"><div class="toolbar"><h2>Accounts</h2><button class="primary" onclick="openAccount()">+ Account</button></div><div id="accountList" class="list"></div></section><section id="tx" class="view"><div class="toolbar"><h2>Transactions</h2><button class="primary" onclick="openTx()">+ Transaction</button></div><div id="txList" class="list"></div></section><section id="budgets" class="view"><div class="toolbar"><h2>Monthly budgets</h2><button class="primary" onclick="openBudget()">+ Budget</button></div><div id="budgetList" class="list"></div></section><section id="settings" class="view"><h2>Exchange rates</h2><div class="panel forms"><label>1 EUR = RSD<input id="rsd" type="number" step="0.0001"></label><label>1 EUR = VND<input id="vnd" type="number" step="0.01"></label><button class="primary full" onclick="saveRates()">Save rates</button></div><h2>Backup</h2><div class="panel actions"><button onclick="backup()">Export JSON</button><label style="display:inline-block"><input id="restoreFile" type="file" accept="application/json" hidden onchange="restore(this)"><button onclick="restoreFile.click()">Import JSON</button></label><button class="danger" onclick="resetAll()">Reset</button></div><p class="muted">Your financial records stay in this browser on this device unless you export them.</p></section></main><dialog id="accountDlg"><form onsubmit="saveAccount(event)" class="forms"><input id="aid" type="hidden"><label class="full">Account name<input id="aname" required placeholder="Cash Serbia / Techcombank"></label><label>Scope<select id="ascope"><option>Personal</option><option>Business</option></select></label><label>Type<select id="atype"><option>Cash</option><option>Bank</option></select></label><label>Currency<select id="acur"><option>EUR</option><option>RSD</option><option>VND</option></select></label><label>Opening balance<input id="abal" type="number" step="0.01" value="0"></label><div class="actions full"><button type="button" onclick="accountDlg.close()">Cancel</button><button class="primary">Save</button></div></form></dialog><dialog id="txDlg"><form onsubmit="saveTx(event)" class="forms"><label>Type<select id="ttype" onchange="toggleTransfer()"><option>Expense</option><option>Income</option><option>Transfer</option></select></label><label>Date<input id="tdate" type="date" required></label><label class="full">Account<select id="tacc" required></select></label><label id="toWrap" class="full" style="display:none">To account<select id="tto"></select></label><label>Amount<input id="tamount" type="number" min="0.01" step="0.01" required></label><label id="catWrap">Category<select id="tcat"></select></label><label class="full">Description<input id="tdesc" placeholder="Groceries, rent, salary..."></label><div class="actions full"><button type="button" onclick="txDlg.close()">Cancel</button><button class="primary">Save</button></div></form></dialog><dialog id="budgetDlg"><form onsubmit="saveBudget(event)" class="forms"><label>Scope<select id="bscope"><option>Personal</option><option>Business</option></select></label><label>Category<select id="bcat"></select></label><label>Amount<input id="bamt" type="number" min="0.01" step="0.01" required></label><label>Currency<select id="bcur"><option>EUR</option><option>RSD</option><option>VND</option></select></label><div class="actions full"><button type="button" onclick="budgetDlg.close()">Cancel</button><button class="primary">Save</button></div></form></dialog><script>const K='triledger-finance-v1',cats=['Food','Housing','Transport','Shopping','Health','Education','Travel','Utilities','Subscriptions','Taxes','Payroll','Marketing','Office','Other'];const D={settings:{base:'EUR',rates:{EUR:1,RSD:117.35,VND:30248.3}},accounts:[{id:'a1',name:'Cash EUR',scope:'Personal',type:'Cash',currency:'EUR',opening:0},{id:'a2',name:'Cash RSD',scope:'Personal',type:'Cash',currency:'RSD',opening:0},{id:'a3',name:'Business EUR',scope:'Business',type:'Bank',currency:'EUR',opening:0},{id:'a4',name:'Business VND',scope:'Business',type:'Bank',currency:'VND',opening:0}],tx:[],budgets:[]};let S=load();function load(){try{return Object.assign(structuredClone(D),JSON.parse(localStorage.getItem(K)||'{}'))}catch{return structuredClone(D)}}function save(){localStorage.setItem(K,JSON.stringify(S));render()}function conv(n,f,t=S.settings.base){if(f===t)return +n||0;return((+n||0)/(S.settings.rates[f]||1))*(S.settings.rates[t]||1)}function money(n,c=S.settings.base){return new Intl.NumberFormat(undefined,{style:'currency',currency:c,maximumFractionDigits:c==='VND'?0:2}).format(n||0)}function acc(id){return S.accounts.find(a=>a.id===id)}function bal(id){let a=acc(id),b=+(a?.opening||0);for(const t of S.tx){if(t.account===id){if(t.type==='Expense'||t.type==='Transfer')b-=+t.amount;else if(t.type==='Income')b+=+t.amount}if(t.type==='Transfer'&&t.to===id){let from=acc(t.account);b+=conv(t.amount,from.currency,a.currency)}}return b}function month(){return new Date().toISOString().slice(0,7)}function render(){base.value=S.settings.base;rsd.value=S.settings.rates.RSD;vnd.value=S.settings.rates.VND;const m=month(),mt=S.tx.filter(t=>t.date.startsWith(m));total.textContent=money(S.accounts.reduce((x,a)=>x+conv(bal(a.id),a.currency),0));income.textContent=money(mt.filter(t=>t.type==='Income').reduce((x,t)=>x+conv(t.amount,acc(t.account).currency),0));expenses.textContent=money(mt.filter(t=>t.type==='Expense').reduce((x,t)=>x+conv(t.amount,acc(t.account).currency),0));dashAccounts.innerHTML=accountRows(S.accounts);accountList.innerHTML=accountRows(S.accounts,true);recent.innerHTML=txRows([...S.tx].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5));txList.innerHTML=txRows([...S.tx].sort((a,b)=>b.date.localeCompare(a.date)),true);budgetList.innerHTML=budgetRows();fillSelects()}function accountRows(list,edit=false){return list.length?list.map(a=>`<div class="row"><div><strong>${a.name}</strong><br><small>${a.scope} · ${a.type} · ${a.currency}</small></div><div style="text-align:right"><strong>${money(bal(a.id),a.currency)}</strong><br><small>${money(conv(bal(a.id),a.currency))}</small>${edit?`<br><button onclick="delAccount('${a.id}')">Delete</button>`:''}</div></div>`).join(''):'<div class="empty">No accounts</div>'}function txRows(list,edit=false){return list.length?list.map(t=>{let a=acc(t.account),cl=t.type.toLowerCase(),sg=t.type==='Expense'?'−':t.type==='Income'?'+':'↔';return`<div class="row"><div><strong>${t.desc||t.type}</strong><br><small>${t.date} · ${a?.name||''}${t.category?' · '+t.category:''}</small></div><div style="text-align:right"><span class="amount ${cl}">${sg}${money(t.amount,a?.currency||'EUR')}</span>${edit?`<br><button onclick="delTx('${t.id}')">Delete</button>`:''}</div></div>`}).join(''):'<div class="empty">No transactions yet</div>'}function budgetRows(){let m=month();return S.budgets.length?S.budgets.map(b=>{let spent=S.tx.filter(t=>t.type==='Expense'&&t.date.startsWith(m)&&t.category===b.category&&acc(t.account)?.scope===b.scope).reduce((x,t)=>x+conv(conv(t.amount,acc(t.account).currency),S.settings.base,b.currency),0),p=Math.min(100,b.amount?spent/b.amount*100:0);return`<div class="row"><div><strong>${b.category}</strong><br><small>${b.scope} · ${money(spent,b.currency)} of ${money(b.amount,b.currency)}</small><div class="budgetbar"><i style="width:${p}%"></i></div></div><button onclick="delBudget('${b.id}')">Delete</button></div>`}).join(''):'<div class="empty">No budgets yet</div>'}function fillSelects(){let ao=S.accounts.map(a=>`<option value="${a.id}">${a.name} · ${a.currency}</option>`).join(''),co=cats.map(c=>`<option>${c}</option>`).join('');tacc.innerHTML=ao;tto.innerHTML=ao;tcat.innerHTML=co;bcat.innerHTML=co}document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===b.dataset.v))});function openAccount(){aid.value='';aname.value='';ascope.value='Personal';atype.value='Cash';acur.value='EUR';abal.value=0;accountDlg.showModal()}function saveAccount(e){e.preventDefault();S.accounts.push({id:crypto.randomUUID(),name:aname.value.trim(),scope:ascope.value,type:atype.value,currency:acur.value,opening:+abal.value||0});accountDlg.close();save()}function delAccount(id){if(S.tx.some(t=>t.account===id||t.to===id))return alert('Delete this account’s transactions first.');if(confirm('Delete account?')){S.accounts=S.accounts.filter(a=>a.id!==id);save()}}function openTx(){if(!S.accounts.length)return alert('Add an account first.');tdate.value=new Date().toISOString().slice(0,10);ttype.value='Expense';tamount.value='';tdesc.value='';toggleTransfer();fillSelects();txDlg.showModal()}function toggleTransfer(){toWrap.style.display=ttype.value==='Transfer'?'flex':'none';catWrap.style.display=ttype.value==='Transfer'?'none':'flex'}function saveTx(e){e.preventDefault();if(ttype.value==='Transfer'&&tacc.value===tto.value)return alert('Choose different accounts.');S.tx.push({id:crypto.randomUUID(),type:ttype.value,date:tdate.value,account:tacc.value,to:ttype.value==='Transfer'?tto.value:'',amount:+tamount.value,category:ttype.value==='Transfer'?'':tcat.value,desc:tdesc.value.trim()});txDlg.close();save()}function delTx(id){if(confirm('Delete transaction?')){S.tx=S.tx.filter(t=>t.id!==id);save()}}function openBudget(){fillSelects();bamt.value='';budgetDlg.showModal()}function saveBudget(e){e.preventDefault();S.budgets.push({id:crypto.randomUUID(),scope:bscope.value,category:bcat.value,amount:+bamt.value,currency:bcur.value});budgetDlg.close();save()}function delBudget(id){S.budgets=S.budgets.filter(b=>b.id!==id);save()}function saveRates(){if(+rsd.value<=0||+vnd.value<=0)return alert('Rates must be positive.');S.settings.rates.RSD=+rsd.value;S.settings.rates.VND=+vnd.value;save()}function backup(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='triledger-backup.json';a.click()}async function restore(i){try{let x=JSON.parse(await i.files[0].text());if(confirm('Replace current data?')){S=x;save()}}catch{alert('Invalid backup')}}function resetAll(){if(confirm('Delete all local TriLedger data on this device?')){S=structuredClone(D);save()}}if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});render();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="manifest.webmanifest">
+<title>TriLedger Finance</title>
+<style>
+:root{--b:#07101d;--p:#0d1727;--p2:#111d30;--l:#22314a;--t:#eef4ff;--m:#8ea1be;--a:#4e8cff;--g:#51d29a;--r:#ff7882;--w:#f0b44e}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#081321,var(--b) 260px);color:var(--t);font:15px system-ui,-apple-system,sans-serif}
+header,main,.tabs{max-width:980px;margin:auto}header{padding:20px 18px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{margin:0;font-size:27px}h2{font-size:20px;margin:18px 0 10px}h3{font-size:16px;margin:0 0 8px}
+button,input,select,textarea{font:inherit;border:1px solid var(--l);background:#0b1525;color:var(--t);border-radius:11px;padding:10px}
+button{cursor:pointer}.primary{background:var(--a);border-color:var(--a);font-weight:750}.muted,small{color:var(--m)}
+.tabs{display:flex;gap:7px;overflow:auto;padding:0 18px 12px}.tabs button{white-space:nowrap}.tabs button.active{background:#152640;border-color:#2d466e}
+main{padding:0 18px 60px}.view{display:none}.view.active{display:block}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.card,.panel,.group{border:1px solid var(--l);background:linear-gradient(180deg,var(--p2),var(--p));border-radius:16px;padding:15px}
+.card strong{display:block;font-size:22px;margin-top:5px}.dual strong{font-size:19px}.dual small{display:block;margin-top:3px}
+.group{margin-bottom:12px}.group-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.group-title h3{margin:0}.badge{display:inline-flex;border-radius:999px;background:#162640;padding:4px 8px;font-size:12px;font-weight:750;color:#cfe0ff}
+.list{display:flex;flex-direction:column;gap:8px}.row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;border:1px solid var(--l);background:#0b1525;border-radius:13px;padding:12px}
+.row strong{display:block}.row-right{text-align:right}.row-right .secondary{font-size:12px;color:var(--m);margin-top:2px}
+.amount{font-weight:800}.expense{color:#ffc1c6}.income{color:#9ce8c3}.transfer{color:#bed4ff}
+.actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{padding:7px 9px}
+.forms{display:grid;grid-template-columns:1fr 1fr;gap:10px}.forms label{display:flex;flex-direction:column;gap:5px;color:#cbd7e8}.forms .full{grid-column:1/-1}
+.help{font-size:12px;color:var(--m);margin-top:3px}.currency-pair{padding:12px;border:1px solid #2f466c;background:#0d1b30;border-radius:13px}
+.currency-pair h3{margin:0 0 3px}.currency-pair .forms{margin-top:9px}.highlight{color:#cfe0ff}
+.budgetbar{height:8px;border-radius:999px;background:#17243a;overflow:hidden;margin-top:8px}.budgetbar i{display:block;height:100%;background:var(--a)}
+dialog{width:min(560px,calc(100% - 22px));max-height:90vh;overflow:auto;border:1px solid var(--l);border-radius:18px;background:#0b1525;color:var(--t);padding:18px}
+dialog::backdrop{background:#000a}.empty{padding:22px;text-align:center;color:var(--m);border:1px dashed var(--l);border-radius:13px}
+.notice{border:1px solid #304668;background:#0c192c;border-radius:14px;padding:12px;margin:10px 0}.notice strong{display:block;margin-bottom:4px}
+.seg{display:flex;gap:6px}.seg button.active{background:#1b3152;border-color:#3c5d8d}
+@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid{grid-template-columns:1fr}.forms{grid-template-columns:1fr}.forms .full{grid-column:auto}.toolbar{align-items:flex-start}.row{grid-template-columns:1fr auto}.card strong{font-size:20px}header .primary{padding:9px 10px}}
+</style>
+</head>
+<body>
+<header>
+  <div><small>Personal + JYS finance</small><h1>TriLedger</h1></div>
+  <button class="primary" onclick="openTx()">+ Expense</button>
+</header>
+<nav class="tabs">
+  <button class="active" data-v="dash">Dashboard</button>
+  <button data-v="accounts">Accounts</button>
+  <button data-v="tx">Transactions</button>
+  <button data-v="budgets">Budgets</button>
+  <button data-v="settings">Settings</button>
+</nav>
+<main>
+<section id="dash" class="view active">
+  <div class="toolbar"><div><h2>Dashboard</h2><small>RSD for daily life, VND for Vietnamese accounts.</small></div><div class="seg"><button id="baseRsdBtn" onclick="setBase('RSD')">RSD</button><button id="baseVndBtn" onclick="setBase('VND')">VND</button><button id="baseEurBtn" onclick="setBase('EUR')">EUR</button></div></div>
+  <div class="grid">
+    <div class="card dual"><small>Total balance</small><strong id="totalRsd"></strong><small id="totalVnd"></small></div>
+    <div class="card dual"><small>This month expenses</small><strong id="expensesRsd"></strong><small id="expensesVnd"></small></div>
+    <div class="card dual"><small>This month income</small><strong id="incomeVnd"></strong><small id="incomeRsd"></small></div>
+    <div class="card dual"><small>Daily spending source</small><strong>VN cards + cash</strong><small>Track purchases in RSD and VND</small></div>
+  </div>
+  <h2>Accounts</h2><div id="dashAccounts"></div>
+  <h2>Recent expenses</h2><div id="recent" class="list"></div>
+</section>
+
+<section id="accounts" class="view">
+  <div class="toolbar"><div><h2>Accounts</h2><small>Organized by how you actually use the money.</small></div><button class="primary" onclick="openAccount()">+ Account</button></div>
+  <div id="accountList"></div>
+</section>
+
+<section id="tx" class="view">
+  <div class="toolbar"><div><h2>Transactions</h2><small>Serbian purchases can store both the RSD receipt and VND card debit.</small></div><button class="primary" onclick="openTx()">+ Transaction</button></div>
+  <div id="txList" class="list"></div>
+</section>
+
+<section id="budgets" class="view">
+  <div class="toolbar"><h2>Monthly budgets</h2><button class="primary" onclick="openBudget()">+ Budget</button></div>
+  <div id="budgetList" class="list"></div>
+</section>
+
+<section id="settings" class="view">
+  <h2>Exchange rates</h2>
+  <div class="panel forms">
+    <label>1 EUR = RSD<input id="rsd" type="number" step="0.0001"></label>
+    <label>1 EUR = VND<input id="vnd" type="number" step="0.01"></label>
+    <button class="primary full" onclick="saveRates()">Save rates</button>
+  </div>
+  <div class="notice"><strong>For card purchases</strong>Use the exact RSD amount from the Serbian receipt and the exact VND amount that TPBank, Techcombank or BIDV actually debited. This captures the real card exchange rate and any hidden conversion difference.</div>
+  <h2>Backup</h2>
+  <div class="panel actions">
+    <button onclick="backup()">Export JSON</button>
+    <label><input id="restoreFile" type="file" accept="application/json" hidden onchange="restore(this)"><button onclick="restoreFile.click()">Import JSON</button></label>
+    <button style="color:#ffb2b8" onclick="resetAll()">Reset</button>
+  </div>
+  <p class="muted">Financial data stays in this browser on this device unless you export it.</p>
+</section>
+</main>
+
+<dialog id="accountDlg">
+<form onsubmit="saveAccount(event)" class="forms">
+  <input id="aid" type="hidden">
+  <label class="full">Account name<input id="aname" required></label>
+  <label>Group<select id="agroup"><option>Personal bank accounts</option><option>Cash</option><option>JYS business accounts</option></select></label>
+  <label>Type<select id="atype"><option>Bank</option><option>Cash</option></select></label>
+  <label>Currency<select id="acur"><option>VND</option><option>RSD</option><option>EUR</option></select></label>
+  <label>Opening balance<input id="abal" type="number" step="0.01" value="0"></label>
+  <div class="actions full"><button type="button" onclick="accountDlg.close()">Cancel</button><button class="primary">Save</button></div>
+</form>
+</dialog>
+
+<dialog id="txDlg">
+<form onsubmit="saveTx(event)" class="forms">
+  <label>Type<select id="ttype" onchange="txFormMode()"><option>Expense</option><option>Income</option><option>Transfer</option></select></label>
+  <label>Date<input id="tdate" type="date" required></label>
+  <label class="full">Pay from / account<select id="tacc" required onchange="accountChanged()"></select></label>
+  <label id="toWrap" class="full" style="display:none">To account<select id="tto"></select></label>
+
+  <div id="serbiaSpendBox" class="full currency-pair">
+    <h3>Serbia purchase</h3>
+    <div class="help">Enter the store/receipt amount in RSD. If you paid by a Vietnamese card, also enter what the bank actually charged in VND.</div>
+    <div class="forms">
+      <label>Purchase amount in RSD<input id="trsd" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 1,250"></label>
+      <label id="vndChargeWrap">Actual bank charge in VND<input id="tvnd" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 278,000"></label>
+    </div>
+    <div id="effectiveRate" class="help highlight"></div>
+  </div>
+
+  <label id="regularAmountWrap" class="full" style="display:none">Amount in account currency<input id="tamount" type="number" min="0.01" step="0.01"></label>
+  <label id="catWrap">Category<select id="tcat"></select></label>
+  <label class="full">Description<input id="tdesc" placeholder="Groceries, taxi, rent, pharmacy..."></label>
+  <div class="actions full"><button type="button" onclick="txDlg.close()">Cancel</button><button class="primary">Save</button></div>
+</form>
+</dialog>
+
+<dialog id="budgetDlg">
+<form onsubmit="saveBudget(event)" class="forms">
+  <label>Scope<select id="bscope"><option>Personal</option><option>JYS Business</option></select></label>
+  <label>Category<select id="bcat"></select></label>
+  <label>Amount<input id="bamt" type="number" min="0.01" step="0.01" required></label>
+  <label>Currency<select id="bcur"><option>RSD</option><option>VND</option><option>EUR</option></select></label>
+  <div class="actions full"><button type="button" onclick="budgetDlg.close()">Cancel</button><button class="primary">Save</button></div>
+</form>
+</dialog>
+
+<script>
+const K='triledger-finance-v1';
+const cats=['Food','Housing','Transport','Shopping','Health','Education','Travel','Utilities','Subscriptions','Taxes','Payroll','Marketing','Office','Other'];
+const REQUIRED=[
+ {id:'tpbank',name:'TPBank Visa',group:'Personal bank accounts',scope:'Personal',type:'Bank',currency:'VND',opening:0},
+ {id:'techcombank',name:'Techcombank Visa',group:'Personal bank accounts',scope:'Personal',type:'Bank',currency:'VND',opening:0},
+ {id:'bidv',name:'BIDV Visa',group:'Personal bank accounts',scope:'Personal',type:'Bank',currency:'VND',opening:0},
+ {id:'cash-rsd',name:'Cash RSD',group:'Cash',scope:'Personal',type:'Cash',currency:'RSD',opening:0},
+ {id:'mbbank-jys',name:'MBBank',group:'JYS business accounts',scope:'JYS Business',type:'Bank',currency:'VND',opening:0},
+ {id:'vietin-company',name:'VietinBank Company',group:'JYS business accounts',scope:'JYS Business',type:'Bank',currency:'VND',opening:0},
+ {id:'vietin-ceo',name:'VietinBank CEO',group:'JYS business accounts',scope:'JYS Business',type:'Bank',currency:'VND',opening:0}
+];
+const D={settings:{base:'RSD',rates:{EUR:1,RSD:117.35,VND:30248.3}},accounts:structuredClone(REQUIRED),tx:[],budgets:[]};
+let S=load();
+function load(){
+ try{
+   let raw=JSON.parse(localStorage.getItem(K)||'{}');
+   let s={...structuredClone(D),...raw,settings:{...D.settings,...(raw.settings||{}),rates:{...D.settings.rates,...(raw.settings?.rates||{})}},accounts:Array.isArray(raw.accounts)?raw.accounts:structuredClone(REQUIRED),tx:Array.isArray(raw.tx)?raw.tx:[],budgets:Array.isArray(raw.budgets)?raw.budgets:[]};
+   migrateAccounts(s); return s;
+ }catch(e){return structuredClone(D)}
+}
+function migrateAccounts(s){
+ const used=id=>s.tx.some(t=>t.account===id||t.to===id);
+ const obsolete=['a1','a2','a3','a4'];
+ s.accounts=s.accounts.filter(a=>!(obsolete.includes(a.id)&&!used(a.id)&&(+a.opening||0)===0));
+ for(const r of REQUIRED){
+   const same=s.accounts.find(a=>a.id===r.id)||s.accounts.find(a=>a.name.toLowerCase()===r.name.toLowerCase());
+   if(!same)s.accounts.push(structuredClone(r));
+   else Object.assign(same,{group:r.group,scope:r.scope,type:r.type,currency:r.currency});
+ }
+}
+function persist(){localStorage.setItem(K,JSON.stringify(S))}
+function save(){persist();render()}
+function acc(id){return S.accounts.find(a=>a.id===id)}
+function conv(n,f,t='RSD'){if(f===t)return +n||0;let eur=(+n||0)/(S.settings.rates[f]||1);return eur*(S.settings.rates[t]||1)}
+function money(n,c){return new Intl.NumberFormat(undefined,{style:'currency',currency:c,maximumFractionDigits:c==='VND'?0:2}).format(n||0)}
+function bal(id){
+ let a=acc(id),b=+(a?.opening||0);
+ for(const t of S.tx){
+   if(t.account===id){
+     if(t.type==='Expense'||t.type==='Transfer')b-=+t.amount||0;
+     if(t.type==='Income')b+=+t.amount||0;
+   }
+   if(t.type==='Transfer'&&t.to===id){
+     const f=acc(t.account); if(f)b+=conv(t.amount,f.currency,a.currency);
+   }
+ }
+ return b
+}
+function month(){return new Date().toISOString().slice(0,7)}
+function txRsd(t){if(+t.rsdAmount>0)return +t.rsdAmount;let a=acc(t.account);return a?conv(t.amount,a.currency,'RSD'):0}
+function txVnd(t){if(+t.vndAmount>0)return +t.vndAmount;let a=acc(t.account);return a?conv(t.amount,a.currency,'VND'):0}
+function setBase(c){S.settings.base=c;save()}
+function render(){
+ baseRsdBtn.classList.toggle('active',S.settings.base==='RSD');baseVndBtn.classList.toggle('active',S.settings.base==='VND');baseEurBtn.classList.toggle('active',S.settings.base==='EUR');
+ rsd.value=S.settings.rates.RSD;vnd.value=S.settings.rates.VND;
+ const m=month(),mt=S.tx.filter(t=>t.date?.startsWith(m));
+ const totalR=S.accounts.reduce((x,a)=>x+conv(bal(a.id),a.currency,'RSD'),0);
+ totalRsd.textContent=money(totalR,'RSD');totalVnd.textContent=money(conv(totalR,'RSD','VND'),'VND');
+ const ex=mt.filter(t=>t.type==='Expense'),inc=mt.filter(t=>t.type==='Income');
+ const er=ex.reduce((x,t)=>x+txRsd(t),0),ev=ex.reduce((x,t)=>x+txVnd(t),0);
+ const iv=inc.reduce((x,t)=>x+txVnd(t),0),ir=inc.reduce((x,t)=>x+txRsd(t),0);
+ expensesRsd.textContent=money(er,'RSD');expensesVnd.textContent=money(ev,'VND');
+ incomeVnd.textContent=money(iv,'VND');incomeRsd.textContent=money(ir,'RSD');
+ dashAccounts.innerHTML=accountGroups(false);accountList.innerHTML=accountGroups(true);
+ const sorted=[...S.tx].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ recent.innerHTML=txRows(sorted.filter(t=>t.type==='Expense').slice(0,6));
+ txList.innerHTML=txRows(sorted,true);
+ budgetList.innerHTML=budgetRows(); fillSelects();
+}
+function accountGroups(edit){
+ const groups=['Personal bank accounts','Cash','JYS business accounts'];
+ return groups.map(g=>{
+   let arr=S.accounts.filter(a=>(a.group||inferGroup(a))===g);
+   if(!arr.length)return '';
+   let label=g==='Personal bank accounts'?'Personal Vietnam cards':g==='JYS business accounts'?'JYS business banking':g;
+   return `<div class="group"><div class="group-title"><h3>${label}</h3><span class="badge">${arr.length} account${arr.length>1?'s':''}</span></div><div class="list">${arr.map(a=>accountRow(a,edit)).join('')}</div></div>`;
+ }).join('')
+}
+function inferGroup(a){return a.type==='Cash'?'Cash':a.scope==='Personal'?'Personal bank accounts':'JYS business accounts'}
+function accountRow(a,edit){
+ const b=bal(a.id),rs=conv(b,a.currency,'RSD'),vn=conv(b,a.currency,'VND');
+ return `<div class="row"><div><strong>${a.name}</strong><small>${a.type} · ${a.currency}${a.scope==='JYS Business'?' · JYS':''}</small></div><div class="row-right"><strong>${money(b,a.currency)}</strong><div class="secondary">${money(rs,'RSD')} · ${money(vn,'VND')}</div>${edit?`<div class="actions" style="justify-content:flex-end;margin-top:5px"><button onclick="editAccount('${a.id}')">Edit</button>${REQUIRED.some(r=>r.id===a.id)?'':`<button onclick="delAccount('${a.id}')">Delete</button>`}</div>`:''}</div></div>`
+}
+function txRows(list,edit=false){
+ return list.length?list.map(t=>{
+   let a=acc(t.account),cl=t.type.toLowerCase(),sg=t.type==='Expense'?'−':t.type==='Income'?'+':'↔';
+   let main=a?money(t.amount,a.currency):money(t.amount,'VND');
+   let pair=t.type==='Expense'&&(+t.rsdAmount>0||+t.vndAmount>0)?`${money(txRsd(t),'RSD')} · ${money(txVnd(t),'VND')}`:'';
+   return `<div class="row"><div><strong>${t.desc||t.type}</strong><small>${t.date} · ${a?.name||''}${t.category?' · '+t.category:''}</small></div><div class="row-right"><span class="amount ${cl}">${sg}${main}</span>${pair?`<div class="secondary">${pair}</div>`:''}${edit?`<div class="actions" style="justify-content:flex-end;margin-top:5px"><button onclick="delTx('${t.id}')">Delete</button></div>`:''}</div></div>`
+ }).join(''):'<div class="empty">No transactions yet</div>'
+}
+function budgetRows(){
+ let m=month();
+ return S.budgets.length?S.budgets.map(b=>{
+   let rel=S.tx.filter(t=>t.type==='Expense'&&t.date?.startsWith(m)&&t.category===b.category&&acc(t.account)?.scope===b.scope);
+   let spent=rel.reduce((x,t)=>x+(b.currency==='RSD'?txRsd(t):b.currency==='VND'?txVnd(t):conv(txRsd(t),'RSD','EUR')),0);
+   let p=Math.min(100,b.amount?spent/b.amount*100:0);
+   return `<div class="row"><div><strong>${b.category}</strong><small>${b.scope} · ${money(spent,b.currency)} of ${money(b.amount,b.currency)}</small><div class="budgetbar"><i style="width:${p}%"></i></div></div><button onclick="delBudget('${b.id}')">Delete</button></div>`
+ }).join(''):'<div class="empty">No budgets yet</div>'
+}
+function fillSelects(){
+ const grouped=['Personal bank accounts','Cash','JYS business accounts'];
+ let ao=grouped.map(g=>{
+   let arr=S.accounts.filter(a=>(a.group||inferGroup(a))===g);
+   return arr.length?`<optgroup label="${g}">${arr.map(a=>`<option value="${a.id}">${a.name} · ${a.currency}</option>`).join('')}</optgroup>`:''
+ }).join('');
+ tacc.innerHTML=ao;tto.innerHTML=ao;
+ let co=cats.map(c=>`<option>${c}</option>`).join('');tcat.innerHTML=co;bcat.innerHTML=co
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===b.dataset.v))});
+function openAccount(){aid.value='';aname.value='';agroup.value='Personal bank accounts';atype.value='Bank';acur.value='VND';abal.value=0;accountDlg.showModal()}
+function editAccount(id){let a=acc(id);if(!a)return;aid.value=a.id;aname.value=a.name;agroup.value=a.group||inferGroup(a);atype.value=a.type;acur.value=a.currency;abal.value=a.opening||0;accountDlg.showModal()}
+function saveAccount(e){
+ e.preventDefault();let id=aid.value||crypto.randomUUID(),scope=agroup.value==='JYS business accounts'?'JYS Business':'Personal';
+ let obj={id,name:aname.value.trim(),group:agroup.value,scope,type:atype.value,currency:acur.value,opening:+abal.value||0};
+ let i=S.accounts.findIndex(a=>a.id===id);if(i>=0)S.accounts[i]=obj;else S.accounts.push(obj);accountDlg.close();save()
+}
+function delAccount(id){if(S.tx.some(t=>t.account===id||t.to===id))return alert('Delete this account’s transactions first.');if(confirm('Delete account?')){S.accounts=S.accounts.filter(a=>a.id!==id);save()}}
+function openTx(){
+ if(!S.accounts.length)return alert('Add an account first.');
+ fillSelects();tdate.value=new Date().toISOString().slice(0,10);ttype.value='Expense';trsd.value='';tvnd.value='';tamount.value='';tdesc.value='';
+ tacc.value='tpbank';txFormMode();txDlg.showModal()
+}
+function txFormMode(){
+ const transfer=ttype.value==='Transfer', expense=ttype.value==='Expense';
+ toWrap.style.display=transfer?'flex':'none';catWrap.style.display=transfer?'none':'flex';
+ serbiaSpendBox.style.display=expense?'block':'none';regularAmountWrap.style.display=expense?'none':'flex';
+ accountChanged()
+}
+function accountChanged(){
+ const a=acc(tacc.value); if(!a)return;
+ vndChargeWrap.style.display=(ttype.value==='Expense'&&a.currency==='VND')?'flex':'none';
+ if(ttype.value==='Expense'&&a.currency==='RSD'){tvnd.value=''}
+ updateEffective()
+}
+[trsd,tvnd].forEach(el=>el.addEventListener('input',updateEffective));
+function updateEffective(){
+ const r=+trsd.value,v=+tvnd.value;
+ if(r>0&&v>0)effectiveRate.textContent=`Actual card conversion: ${Math.round(v/r).toLocaleString()} VND per RSD`;
+ else if(r>0){const est=conv(r,'RSD','VND');effectiveRate.textContent=`Reference-rate estimate: about ${money(est,'VND')}`}
+ else effectiveRate.textContent=''
+}
+function saveTx(e){
+ e.preventDefault();let a=acc(tacc.value);if(!a)return;
+ if(ttype.value==='Transfer'&&tacc.value===tto.value)return alert('Choose different accounts.');
+ let amount=0,rsdAmount=0,vndAmount=0;
+ if(ttype.value==='Expense'){
+   rsdAmount=+trsd.value||0;vndAmount=+tvnd.value||0;
+   if(a.currency==='VND'){amount=vndAmount||conv(rsdAmount,'RSD','VND')}
+   else if(a.currency==='RSD'){amount=rsdAmount}
+   else amount=conv(rsdAmount,'RSD',a.currency);
+   if(amount<=0)return alert('Enter the RSD purchase amount, and for a Vietnamese card preferably the actual VND charge too.');
+ }else{
+   amount=+tamount.value||0;if(amount<=0)return alert('Enter an amount.');
+   rsdAmount=conv(amount,a.currency,'RSD');vndAmount=conv(amount,a.currency,'VND');
+ }
+ S.tx.push({id:crypto.randomUUID(),type:ttype.value,date:tdate.value,account:tacc.value,to:ttype.value==='Transfer'?tto.value:'',amount,rsdAmount,vndAmount,category:ttype.value==='Transfer'?'':tcat.value,desc:tdesc.value.trim()});
+ txDlg.close();save()
+}
+function delTx(id){if(confirm('Delete transaction?')){S.tx=S.tx.filter(t=>t.id!==id);save()}}
+function openBudget(){fillSelects();bamt.value='';budgetDlg.showModal()}
+function saveBudget(e){e.preventDefault();S.budgets.push({id:crypto.randomUUID(),scope:bscope.value,category:bcat.value,amount:+bamt.value,currency:bcur.value});budgetDlg.close();save()}
+function delBudget(id){S.budgets=S.budgets.filter(b=>b.id!==id);save()}
+function saveRates(){if(+rsd.value<=0||+vnd.value<=0)return alert('Rates must be positive.');S.settings.rates.RSD=+rsd.value;S.settings.rates.VND=+vnd.value;save()}
+function backup(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='triledger-backup.json';a.click()}
+async function restore(i){try{let x=JSON.parse(await i.files[0].text());if(confirm('Replace current data?')){S=x;migrateAccounts(S);save()}}catch{alert('Invalid backup')}}
+function resetAll(){if(confirm('Delete all local TriLedger data on this device and recreate your standard accounts?')){S=structuredClone(D);save()}}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+render();
+</script>
+</body>
+</html>
