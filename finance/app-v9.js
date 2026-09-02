@@ -18,6 +18,7 @@
     const repaired=repairFalseUtilities();
     if(repaired){persist();render();if(window.renderBudgetV8)renderBudgetV8()}
     addRepairNotice(repaired);
+    const merge=document.createElement('script');merge.src='app-v10.js?v=10';document.body.appendChild(merge);
   }
 
   function normalize9(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim()}
@@ -50,9 +51,7 @@
     return 'Other'
   }
 
-  function patchCategorizer(){
-    receiptCategory=function(text){return safeCategory(text)}
-  }
+  function patchCategorizer(){receiptCategory=function(text){return safeCategory(text)}}
 
   function repairFalseUtilities(){
     let count=0;
