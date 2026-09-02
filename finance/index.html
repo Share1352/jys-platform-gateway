@@ -23,98 +23,19 @@
 <main>
 <section id="dash" class="view active">
   <div class="toolbar"><div><h2>Dashboard</h2><small>RSD for daily life, VND for Vietnamese accounts.</small></div><div class="seg"><button id="baseRsdBtn" onclick="setBase('RSD')">RSD</button><button id="baseVndBtn" onclick="setBase('VND')">VND</button><button id="baseEurBtn" onclick="setBase('EUR')">EUR</button></div></div>
-  <div class="grid">
-    <div class="card dual"><small>Total balance</small><strong id="totalRsd"></strong><small id="totalVnd"></small></div>
-    <div class="card dual"><small>This month expenses</small><strong id="expensesRsd"></strong><small id="expensesVnd"></small></div>
-    <div class="card dual"><small>This month income</small><strong id="incomeVnd"></strong><small id="incomeRsd"></small></div>
-    <div class="card dual"><small>Daily spending source</small><strong>VN cards + cash</strong><small>Track purchases in RSD and VND</small></div>
-  </div>
-  <h2>Accounts</h2><div id="dashAccounts"></div>
-  <h2>Where my money went this month</h2><div id="categoryBreakdown" class="panel"></div>
-  <h2>Recent expenses</h2><div id="recent" class="list"></div>
+  <div class="grid"><div class="card dual"><small>Total balance</small><strong id="totalRsd"></strong><small id="totalVnd"></small></div><div class="card dual"><small>This month expenses</small><strong id="expensesRsd"></strong><small id="expensesVnd"></small></div><div class="card dual"><small>This month income</small><strong id="incomeVnd"></strong><small id="incomeRsd"></small></div><div class="card dual"><small>Daily spending source</small><strong>VN cards + cash</strong><small>Track purchases in RSD and VND</small></div></div>
+  <h2>Accounts</h2><div id="dashAccounts"></div><h2>Where my money went this month</h2><div id="categoryBreakdown" class="panel"></div><h2>Recent expenses</h2><div id="recent" class="list"></div>
 </section>
-<section id="accounts" class="view">
-  <div class="toolbar"><div><h2>Accounts</h2><small>Organized by how you actually use the money.</small></div><div class="toolbar-actions"><button onclick="openPlannedSerbianAccount()">+ Planned Serbian bank</button><button class="primary" onclick="openAccount()">+ Account</button></div></div>
-  <div id="accountList"></div>
-</section>
-<section id="tx" class="view">
-  <div class="toolbar"><div><h2>Transactions</h2><small>Serbian purchases can store both the RSD receipt and VND card debit.</small></div><div class="toolbar-actions"><button onclick="receiptInput.click()">📷 Scan receipt</button><button class="primary" onclick="openTx()">+ Transaction</button></div></div>
-  <div id="txList" class="list"></div>
-</section>
-<section id="budgets" class="view">
-  <div class="toolbar"><h2>Monthly budgets</h2><button class="primary" onclick="openBudget()">+ Budget</button></div>
-  <div id="budgetList" class="list"></div>
-</section>
-<section id="settings" class="view">
-  <h2>Exchange rates</h2>
-  <div class="panel forms">
-    <label>1 EUR = RSD<input id="rsd" type="number" step="0.0001"></label>
-    <label>1 EUR = VND<input id="vnd" type="number" step="0.01"></label>
-    <button class="primary full" onclick="saveRates()">Save rates</button>
-  </div>
-  <div class="notice"><strong>For card purchases</strong>Use the exact RSD amount from the Serbian receipt and the exact VND amount that TPBank, Techcombank or BIDV actually debited. This captures the real card exchange rate and any hidden conversion difference.</div>
-  <h2>Backup</h2>
-  <div class="panel actions">
-    <button onclick="backup()">Export JSON</button>
-    <label><input id="restoreFile" type="file" accept="application/json" hidden onchange="restore(this)"><button onclick="restoreFile.click()">Import JSON</button></label>
-    <button style="color:#ffb2b8" onclick="resetAll()">Reset</button>
-  </div>
-  <p class="muted">Financial data stays in this browser on this device unless you export it.</p>
-</section>
+<section id="accounts" class="view"><div class="toolbar"><div><h2>Accounts</h2><small>Organized by how you actually use the money.</small></div><div class="toolbar-actions"><button onclick="openPlannedSerbianAccount()">+ Planned Serbian bank</button><button class="primary" onclick="openAccount()">+ Account</button></div></div><div id="accountList"></div></section>
+<section id="tx" class="view"><div class="toolbar"><div><h2>Transactions</h2><small>Serbian purchases can store both the RSD receipt and VND card debit.</small></div><div class="toolbar-actions"><button onclick="receiptInput.click()">📷 Scan receipt</button><button class="primary" onclick="openTx()">+ Transaction</button></div></div><div id="txList" class="list"></div></section>
+<section id="budgets" class="view"><div class="toolbar"><h2>Monthly budgets</h2><button class="primary" onclick="openBudget()">+ Budget</button></div><div id="budgetList" class="list"></div></section>
+<section id="settings" class="view"><h2>Exchange rates</h2><div class="panel forms"><label>1 EUR = RSD<input id="rsd" type="number" step="0.0001"></label><label>1 EUR = VND<input id="vnd" type="number" step="0.01"></label><button class="primary full" onclick="saveRates()">Save rates</button></div><div class="notice"><strong>For card purchases</strong>Use the exact RSD amount from the Serbian receipt and the exact VND amount that TPBank, Techcombank or BIDV actually debited.</div><h2>Backup</h2><div class="panel actions"><button onclick="backup()">Export JSON</button><label><input id="restoreFile" type="file" accept="application/json" hidden onchange="restore(this)"><button onclick="restoreFile.click()">Import JSON</button></label><button style="color:#ffb2b8" onclick="resetAll()">Reset</button></div><p class="muted">Financial data stays in this browser on this device unless you export it.</p></section>
 </main>
 <input id="receiptInput" type="file" accept="image/*" capture="environment" hidden onchange="scanReceipt(this)">
-<dialog id="scanDlg">
-  <div class="scanbox">
-    <div><h2 style="margin:0 0 4px">Scan receipt</h2><small id="scanStatus">Preparing receipt…</small></div>
-    <img id="receiptPreview" class="receipt-preview" alt="Receipt preview">
-    <div class="progress"><i id="scanProgress"></i></div>
-    <div class="help">The image is processed for text extraction. Review the detected amount, date and category before saving.</div>
-    <div class="actions"><button type="button" onclick="scanDlg.close()">Cancel</button></div>
-  </div>
-</dialog>
-<dialog id="accountDlg">
-<form onsubmit="saveAccount(event)" class="forms">
-  <input id="aid" type="hidden">
-  <label class="full">Account name<input id="aname" required></label>
-  <label>Group<select id="agroup"><option>Personal bank accounts</option><option>Cash</option><option>JYS business accounts</option><option>Serbian bank accounts</option></select></label>
-  <label>Type<select id="atype"><option>Bank</option><option>Cash</option></select></label>
-  <label>Currency<select id="acur"><option>VND</option><option>RSD</option><option>EUR</option></select></label>
-  <label>Opening balance<input id="abal" type="number" step="0.01" value="0"></label>
-  <label>Account status<select id="astatus"><option value="open">Open / usable now</option><option value="planned">Planned / not opened yet</option></select></label>
-  <div class="actions full"><button type="button" onclick="accountDlg.close()">Cancel</button><button class="primary">Save</button></div>
-</form>
-</dialog>
-<dialog id="txDlg">
-<form onsubmit="saveTx(event)" class="forms">
-  <label>Type<select id="ttype" onchange="txFormMode()"><option>Expense</option><option>Income</option><option>Transfer</option></select></label>
-  <label>Date<input id="tdate" type="date" required></label>
-  <label class="full">Pay from / account<select id="tacc" required onchange="accountChanged()"></select></label>
-  <label id="toWrap" class="full" style="display:none">To account<select id="tto"></select></label>
-  <div id="serbiaSpendBox" class="full currency-pair">
-    <h3>Serbia purchase</h3>
-    <div class="help">Enter the store/receipt amount in RSD. If you paid by a Vietnamese card, also enter what the bank actually charged in VND.</div>
-    <div class="forms">
-      <label>Purchase amount in RSD<input id="trsd" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 1,250"></label>
-      <label id="vndChargeWrap">Actual bank charge in VND<input id="tvnd" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 278,000"></label>
-    </div>
-    <div id="effectiveRate" class="help highlight"></div>
-  </div>
-  <label id="regularAmountWrap" class="full" style="display:none">Amount in account currency<input id="tamount" type="number" min="0.01" step="0.01"></label>
-  <label id="catWrap">Category<select id="tcat"></select></label>
-  <label class="full">Description<input id="tdesc" placeholder="Groceries, taxi, rent, pharmacy..."></label>
-  <div class="actions full"><button type="button" onclick="txDlg.close()">Cancel</button><button class="primary">Save</button></div>
-</form>
-</dialog>
-<dialog id="budgetDlg">
-<form onsubmit="saveBudget(event)" class="forms">
-  <label>Scope<select id="bscope"><option>Personal</option><option>JYS Business</option></select></label>
-  <label>Category<select id="bcat"></select></label>
-  <label>Amount<input id="bamt" type="number" min="0.01" step="0.01" required></label>
-  <label>Currency<select id="bcur"><option>RSD</option><option>VND</option><option>EUR</option></select></label>
-  <div class="actions full"><button type="button" onclick="budgetDlg.close()">Cancel</button><button class="primary">Save</button></div>
-</form>
-</dialog>
+<dialog id="scanDlg"><div class="scanbox"><div><h2 style="margin:0 0 4px">Scan receipt</h2><small id="scanStatus">Preparing receipt…</small></div><img id="receiptPreview" class="receipt-preview" alt="Receipt preview"><div class="progress"><i id="scanProgress"></i></div><div class="help">Review detected information before saving.</div><div class="actions"><button type="button" onclick="scanDlg.close()">Cancel</button></div></div></dialog>
+<dialog id="accountDlg"><form onsubmit="saveAccount(event)" class="forms"><input id="aid" type="hidden"><label class="full">Account name<input id="aname" required></label><label>Group<select id="agroup"><option>Personal bank accounts</option><option>Cash</option><option>JYS business accounts</option><option>Serbian bank accounts</option></select></label><label>Type<select id="atype"><option>Bank</option><option>Cash</option></select></label><label>Currency<select id="acur"><option>VND</option><option>RSD</option><option>EUR</option></select></label><label>Opening balance<input id="abal" type="number" step="0.01" value="0"></label><label>Account status<select id="astatus"><option value="open">Open / usable now</option><option value="planned">Planned / not opened yet</option></select></label><div class="actions full"><button type="button" onclick="accountDlg.close()">Cancel</button><button class="primary">Save</button></div></form></dialog>
+<dialog id="txDlg"><form onsubmit="saveTx(event)" class="forms"><label>Type<select id="ttype" onchange="txFormMode()"><option>Expense</option><option>Income</option><option>Transfer</option></select></label><label>Date<input id="tdate" type="date" required></label><label class="full">Pay from / account<select id="tacc" required onchange="accountChanged()"></select></label><label id="toWrap" class="full" style="display:none">To account<select id="tto"></select></label><div id="serbiaSpendBox" class="full currency-pair"><h3>Serbia purchase</h3><div class="help">Enter exact RSD purchase amount and, for Vietnamese cards, actual VND bank debit.</div><div class="forms"><label>Purchase amount in RSD<input id="trsd" type="number" min="0" step="0.01" inputmode="decimal"></label><label id="vndChargeWrap">Actual bank charge in VND<input id="tvnd" type="number" min="0" step="1" inputmode="numeric"></label></div><div id="effectiveRate" class="help highlight"></div></div><label id="regularAmountWrap" class="full" style="display:none">Amount in account currency<input id="tamount" type="number" min="0.01" step="0.01"></label><label id="catWrap">Category<select id="tcat"></select></label><label class="full">Description<input id="tdesc"></label><div class="actions full"><button type="button" onclick="txDlg.close()">Cancel</button><button class="primary">Save</button></div></form></dialog>
+<dialog id="budgetDlg"><form onsubmit="saveBudget(event)" class="forms"><label>Scope<select id="bscope"><option>Personal</option><option>JYS Business</option></select></label><label>Category<select id="bcat"></select></label><label>Amount<input id="bamt" type="number" min="0.01" step="0.01" required></label><label>Currency<select id="bcur"><option>RSD</option><option>VND</option><option>EUR</option></select></label><div class="actions full"><button type="button" onclick="budgetDlg.close()">Cancel</button><button class="primary">Save</button></div></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="app-v9.js?v=9"></script>
-</body>
-</html>
+<script src="app-v10.js?v=10"></script>
+</body></html>
