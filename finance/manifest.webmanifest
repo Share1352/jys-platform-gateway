@@ -1,7 +1,9 @@
 {
+  "id": "./",
   "name": "TriLedger Finance",
   "short_name": "TriLedger",
-  "start_url": "./",
+  "start_url": "./?installed=13",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#07101d",
   "theme_color": "#0b1220",
