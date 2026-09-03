@@ -1,1 +1,55 @@
-const C='triledger-finance-stable12';const F=['./','./index.html','./manifest.webmanifest','./styles.css','./app-v5.js','./stable-migration.js','./stable-ui.js','./stable-budget.js','./stable-plan.js','./stable-workspaces.js','./stable-intelligence.js'];self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(F)))});self.addEventListener('activate',e=>e.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==C).map(k=>caches.delete(k)))),self.clients.claim()])));self.addEventListener('fetch',e=>{if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(C).then(c=>c.put('./index.html',copy));return r}).catch(()=>caches.match('./index.html')))}else{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))}});
+const CACHE='triledger-finance-installed13';
+const ASSETS=['./','./index.html','./manifest.webmanifest','./styles.css','./app-v5.js','./stable-migration.js','./stable-ui.js','./stable-budget.js','./stable-plan.js','./stable-workspaces.js','./stable-intelligence.js','./stable-installed.js'];
+
+self.addEventListener('install',event=>{
+  self.skipWaiting();
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));
+});
+
+self.addEventListener('activate',event=>{
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+    await self.clients.claim();
+    const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    await Promise.all(windows.map(async client=>{
+      try{
+        const u=new URL(client.url);
+        if(u.origin===self.location.origin&&u.pathname.startsWith('/finance/')&&u.searchParams.get('installed')!=='13'){
+          u.searchParams.set('installed','13');
+          await client.navigate(u.href);
+        }
+      }catch{}
+    }));
+  })());
+});
+
+self.addEventListener('message',event=>{
+  if(event.data?.type==='SKIP_WAITING')self.skipWaiting();
+});
+
+self.addEventListener('fetch',event=>{
+  const url=new URL(event.request.url);
+  if(url.origin!==self.location.origin)return;
+  if(event.request.mode==='navigate'){
+    event.respondWith((async()=>{
+      try{
+        const response=await fetch(event.request,{cache:'no-store'});
+        if(response&&response.ok){const cache=await caches.open(CACHE);await cache.put('./index.html',response.clone())}
+        return response;
+      }catch{
+        return (await caches.match('./index.html'))||Response.error();
+      }
+    })());
+    return;
+  }
+  event.respondWith((async()=>{
+    try{
+      const response=await fetch(event.request,{cache:'no-store'});
+      if(response&&response.ok){const cache=await caches.open(CACHE);await cache.put(event.request,response.clone())}
+      return response;
+    }catch{
+      return (await caches.match(event.request))||Response.error();
+    }
+  })());
+});
