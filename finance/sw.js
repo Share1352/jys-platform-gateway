@@ -1,5 +1,5 @@
-const CACHE='triledger-finance-installed13';
-const ASSETS=['./','./index.html','./manifest.webmanifest','./styles.css','./app-v5.js','./stable-migration.js','./stable-ui.js','./stable-budget.js','./stable-plan.js','./stable-workspaces.js','./stable-intelligence.js','./stable-installed.js'];
+const CACHE='triledger-finance-installed14';
+const ASSETS=['./','./index.html','./manifest.webmanifest','./styles.css','./app.js','./stable-migration.js','./stable-ui.js','./stable-budget.js','./stable-plan.js','./stable-workspaces.js','./stable-intelligence.js','./stable-installed.js'];
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
@@ -15,8 +15,8 @@ self.addEventListener('activate',event=>{
     await Promise.all(windows.map(async client=>{
       try{
         const u=new URL(client.url);
-        if(u.origin===self.location.origin&&u.pathname.startsWith('/finance/')&&u.searchParams.get('installed')!=='13'){
-          u.searchParams.set('installed','13');
+        if(u.origin===self.location.origin&&u.pathname.startsWith('/finance/')&&u.searchParams.get('installed')!=='14'){
+          u.searchParams.set('installed','14');
           await client.navigate(u.href);
         }
       }catch{}

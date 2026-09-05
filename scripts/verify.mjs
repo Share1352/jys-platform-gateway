@@ -23,3 +23,20 @@ for (const [name, html] of [["study", study], ["teacher", teacher]]) {
 }
 
 console.log("Gateway routes and security contracts passed.");
+
+// finance/: every shipped script must be reachable, and no filename cache-busting.
+const financeDir = new URL("../finance/", import.meta.url);
+const financeFiles = fs.readdirSync(financeDir);
+const financeScripts = financeFiles.filter((f) => f.endsWith(".js"));
+const financeSources = financeFiles
+  .filter((f) => f.endsWith(".html") || f.endsWith(".js") || f.endsWith(".webmanifest"))
+  .map((f) => [f, fs.readFileSync(new URL(f, financeDir), "utf8")]);
+
+for (const script of financeScripts) {
+  const referenced = financeSources.some(([name, body]) => name !== script && body.includes(script));
+  assert.ok(referenced, `finance/${script} is shipped publicly but nothing references it — delete it`);
+  assert.doesNotMatch(script, /-v\d+\.js$/,
+    `finance/${script} cache-busts by filename — use a ?v= query string instead`);
+}
+
+console.log(`Finance bundle passed: ${financeScripts.length} scripts, all referenced.`);
