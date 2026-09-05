@@ -1,5 +1,5 @@
 const K='triledger-finance-v1';
-const cats=['Food','Housing','Transport','Shopping','Health','Education','Travel','Utilities','Subscriptions','Taxes','Payroll','Marketing','Office','Other'];
+const cats=['Restaurant','Cafe','Food','Housing','Transport','Shopping','Health','Education','Travel','Utilities','Subscriptions','Taxes','Payroll','Marketing','Office','Other'];
 const REQUIRED=[
  {id:'tpbank',name:'TPBank Visa',group:'Personal bank accounts',scope:'Personal',type:'Bank',currency:'VND',opening:0},
  {id:'techcombank',name:'Techcombank Visa',group:'Personal bank accounts',scope:'Personal',type:'Bank',currency:'VND',opening:0},
@@ -11,211 +11,35 @@ const REQUIRED=[
 ];
 const D={settings:{base:'RSD',rates:{EUR:1,RSD:117.35,VND:30248.3}},accounts:structuredClone(REQUIRED),tx:[],budgets:[]};
 let S=load();
-function load(){
- try{
-   let raw=JSON.parse(localStorage.getItem(K)||'{}');
-   let s={...structuredClone(D),...raw,settings:{...D.settings,...(raw.settings||{}),rates:{...D.settings.rates,...(raw.settings?.rates||{})}},accounts:Array.isArray(raw.accounts)?raw.accounts:structuredClone(REQUIRED),tx:Array.isArray(raw.tx)?raw.tx:[],budgets:Array.isArray(raw.budgets)?raw.budgets:[]};
-   migrateAccounts(s); return s;
- }catch(e){return structuredClone(D)}
-}
-function migrateAccounts(s){
- const used=id=>s.tx.some(t=>t.account===id||t.to===id);
- const obsolete=['a1','a2','a3','a4'];
- s.accounts=s.accounts.filter(a=>!(obsolete.includes(a.id)&&!used(a.id)&&(+a.opening||0)===0));
- for(const r of REQUIRED){
-   const same=s.accounts.find(a=>a.id===r.id)||s.accounts.find(a=>a.name.toLowerCase()===r.name.toLowerCase());
-   if(!same)s.accounts.push(structuredClone(r));
-   else Object.assign(same,{group:r.group,scope:r.scope,type:r.type,currency:r.currency});
- }
-}
-function persist(){localStorage.setItem(K,JSON.stringify(S))}
-function save(){persist();render()}
-function acc(id){return S.accounts.find(a=>a.id===id)}
+function load(){try{let raw=JSON.parse(localStorage.getItem(K)||'{}');let s={...structuredClone(D),...raw,settings:{...D.settings,...(raw.settings||{}),rates:{...D.settings.rates,...(raw.settings?.rates||{})}},accounts:Array.isArray(raw.accounts)?raw.accounts:structuredClone(REQUIRED),tx:Array.isArray(raw.tx)?raw.tx:[],budgets:Array.isArray(raw.budgets)?raw.budgets:[]};migrateAccounts(s);return s}catch(e){return structuredClone(D)}}
+function migrateAccounts(s){const used=id=>s.tx.some(t=>t.account===id||t.to===id);const obsolete=['a1','a2','a3','a4'];s.accounts=s.accounts.filter(a=>!(obsolete.includes(a.id)&&!used(a.id)&&(+a.opening||0)===0));for(const r of REQUIRED){const same=s.accounts.find(a=>a.id===r.id)||s.accounts.find(a=>a.name.toLowerCase()===r.name.toLowerCase());if(!same)s.accounts.push(structuredClone(r));else Object.assign(same,{group:r.group,scope:r.scope,type:r.type,currency:r.currency})}}
+function persist(){localStorage.setItem(K,JSON.stringify(S))}function save(){persist();render()}function acc(id){return S.accounts.find(a=>a.id===id)}
 function conv(n,f,t='RSD'){if(f===t)return +n||0;let eur=(+n||0)/(S.settings.rates[f]||1);return eur*(S.settings.rates[t]||1)}
 function money(n,c){return new Intl.NumberFormat(undefined,{style:'currency',currency:c,maximumFractionDigits:c==='VND'?0:2}).format(n||0)}
-function bal(id){
- let a=acc(id),b=+(a?.opening||0);
- for(const t of S.tx){
-   if(t.account===id){
-     if(t.type==='Expense'||t.type==='Transfer')b-=+t.amount||0;
-     if(t.type==='Income')b+=+t.amount||0;
-   }
-   if(t.type==='Transfer'&&t.to===id){
-     const f=acc(t.account); if(f)b+=conv(t.amount,f.currency,a.currency);
-   }
- }
- return b
-}
-function month(){return new Date().toISOString().slice(0,7)}
-function txRsd(t){if(+t.rsdAmount>0)return +t.rsdAmount;let a=acc(t.account);return a?conv(t.amount,a.currency,'RSD'):0}
-function txVnd(t){if(+t.vndAmount>0)return +t.vndAmount;let a=acc(t.account);return a?conv(t.amount,a.currency,'VND'):0}
-function setBase(c){S.settings.base=c;save()}
-function render(){
- baseRsdBtn.classList.toggle('active',S.settings.base==='RSD');baseVndBtn.classList.toggle('active',S.settings.base==='VND');baseEurBtn.classList.toggle('active',S.settings.base==='EUR');
- rsd.value=S.settings.rates.RSD;vnd.value=S.settings.rates.VND;
- const m=month(),mt=S.tx.filter(t=>t.date?.startsWith(m));
- const totalR=S.accounts.filter(a=>!a.planned).reduce((x,a)=>x+conv(bal(a.id),a.currency,'RSD'),0);
- totalRsd.textContent=money(totalR,'RSD');totalVnd.textContent=money(conv(totalR,'RSD','VND'),'VND');
- const ex=mt.filter(t=>t.type==='Expense'),inc=mt.filter(t=>t.type==='Income');
- const er=ex.reduce((x,t)=>x+txRsd(t),0),ev=ex.reduce((x,t)=>x+txVnd(t),0);
- const iv=inc.reduce((x,t)=>x+txVnd(t),0),ir=inc.reduce((x,t)=>x+txRsd(t),0);
- expensesRsd.textContent=money(er,'RSD');expensesVnd.textContent=money(ev,'VND');
- incomeVnd.textContent=money(iv,'VND');incomeRsd.textContent=money(ir,'RSD');
- dashAccounts.innerHTML=accountGroups(false);accountList.innerHTML=accountGroups(true);
- const sorted=[...S.tx].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- recent.innerHTML=txRows(sorted.filter(t=>t.type==='Expense').slice(0,6));
- txList.innerHTML=txRows(sorted,true);
- budgetList.innerHTML=budgetRows(); categoryBreakdown.innerHTML=categoryRows(ex); fillSelects();
-}
-function accountGroups(edit){
- const groups=['Personal bank accounts','Cash','JYS business accounts','Serbian bank accounts'];
- return groups.map(g=>{
-   let arr=S.accounts.filter(a=>(a.group||inferGroup(a))===g);
-   if(!arr.length)return '';
-   let label=g==='Personal bank accounts'?'Personal Vietnam cards':g==='JYS business accounts'?'JYS business banking':g==='Serbian bank accounts'?'Serbian bank accounts':g;
-   return `<div class="group"><div class="group-title"><h3>${label}</h3><span class="badge">${arr.length} account${arr.length>1?'s':''}</span></div><div class="list">${arr.map(a=>accountRow(a,edit)).join('')}</div></div>`;
- }).join('')
-}
+function bal(id){let a=acc(id),b=+(a?.opening||0);for(const t of S.tx){if(t.account===id){if(t.type==='Expense'||t.type==='Transfer')b-=+t.amount||0;if(t.type==='Income')b+=+t.amount||0}if(t.type==='Transfer'&&t.to===id){const f=acc(t.account);if(f)b+=conv(t.amount,f.currency,a.currency)}}return b}
+function month(){return new Date().toISOString().slice(0,7)}function txRsd(t){if(+t.rsdAmount>0)return +t.rsdAmount;let a=acc(t.account);return a?conv(t.amount,a.currency,'RSD'):0}function txVnd(t){if(+t.vndAmount>0)return +t.vndAmount;let a=acc(t.account);return a?conv(t.amount,a.currency,'VND'):0}function setBase(c){S.settings.base=c;save()}
+function render(){baseRsdBtn.classList.toggle('active',S.settings.base==='RSD');baseVndBtn.classList.toggle('active',S.settings.base==='VND');baseEurBtn.classList.toggle('active',S.settings.base==='EUR');rsd.value=S.settings.rates.RSD;vnd.value=S.settings.rates.VND;const m=month(),mt=S.tx.filter(t=>t.date?.startsWith(m));const totalR=S.accounts.filter(a=>!a.planned).reduce((x,a)=>x+conv(bal(a.id),a.currency,'RSD'),0);totalRsd.textContent=money(totalR,'RSD');totalVnd.textContent=money(conv(totalR,'RSD','VND'),'VND');const ex=mt.filter(t=>t.type==='Expense'),inc=mt.filter(t=>t.type==='Income');const er=ex.reduce((x,t)=>x+txRsd(t),0),ev=ex.reduce((x,t)=>x+txVnd(t),0);const iv=inc.reduce((x,t)=>x+txVnd(t),0),ir=inc.reduce((x,t)=>x+txRsd(t),0);expensesRsd.textContent=money(er,'RSD');expensesVnd.textContent=money(ev,'VND');incomeVnd.textContent=money(iv,'VND');incomeRsd.textContent=money(ir,'RSD');dashAccounts.innerHTML=accountGroups(false);accountList.innerHTML=accountGroups(true);const sorted=[...S.tx].sort((a,b)=>(b.date||'').localeCompare(a.date||''));recent.innerHTML=txRows(sorted.filter(t=>t.type==='Expense').slice(0,6));txList.innerHTML=txRows(sorted,true);budgetList.innerHTML=budgetRows();categoryBreakdown.innerHTML=categoryRows(ex);fillSelects()}
+function accountGroups(edit){const groups=['Personal bank accounts','Cash','JYS business accounts','Serbian bank accounts'];return groups.map(g=>{let arr=S.accounts.filter(a=>(a.group||inferGroup(a))===g);if(!arr.length)return '';let label=g==='Personal bank accounts'?'Personal Vietnam cards':g==='JYS business accounts'?'JYS business banking':g==='Serbian bank accounts'?'Serbian bank accounts':g;return `<div class="group"><div class="group-title"><h3>${label}</h3><span class="badge">${arr.length} account${arr.length>1?'s':''}</span></div><div class="list">${arr.map(a=>accountRow(a,edit)).join('')}</div></div>`}).join('')}
 function inferGroup(a){return a.type==='Cash'?'Cash':a.scope==='Personal'?'Personal bank accounts':'JYS business accounts'}
-function accountRow(a,edit){
- const b=bal(a.id),rs=conv(b,a.currency,'RSD'),vn=conv(b,a.currency,'VND');
- return `<div class="row ${a.planned?'planned':''}"><div><strong>${a.name}</strong><small>${a.type} · ${a.currency}${a.scope==='JYS Business'?' · JYS':''} ${a.planned?'<span class="badge planned-tag">PLANNED</span>':''}</small></div><div class="row-right">${a.planned?'<strong>Not opened yet</strong><div class="secondary">Excluded from balances</div>':`<strong>${money(b,a.currency)}</strong><div class="secondary">${money(rs,'RSD')} · ${money(vn,'VND')}</div>`}${edit?`<div class="actions" style="justify-content:flex-end;margin-top:5px"><button onclick="editAccount('${a.id}')">Edit</button>${REQUIRED.some(r=>r.id===a.id)?'':`<button onclick="delAccount('${a.id}')">Delete</button>`}</div>`:''}</div></div>`
-}
-function txRows(list,edit=false){
- return list.length?list.map(t=>{
-   let a=acc(t.account),cl=t.type.toLowerCase(),sg=t.type==='Expense'?'−':t.type==='Income'?'+':'↔';
-   let main=a?money(t.amount,a.currency):money(t.amount,'VND');
-   let pair=t.type==='Expense'&&(+t.rsdAmount>0||+t.vndAmount>0)?`${money(txRsd(t),'RSD')} · ${money(txVnd(t),'VND')}`:'';
-   return `<div class="row"><div><strong>${t.desc||t.type}</strong><small>${t.date} · ${a?.name||''}${t.category?' · '+t.category:''}${t.receiptScanned?' · 📷 Receipt':''}</small></div><div class="row-right"><span class="amount ${cl}">${sg}${main}</span>${pair?`<div class="secondary">${pair}</div>`:''}${edit?`<div class="actions" style="justify-content:flex-end;margin-top:5px"><button onclick="delTx('${t.id}')">Delete</button></div>`:''}</div></div>`
- }).join(''):'<div class="empty">No transactions yet</div>'
-}
-function budgetRows(){
- let m=month();
- return S.budgets.length?S.budgets.map(b=>{
-   let rel=S.tx.filter(t=>t.type==='Expense'&&t.date?.startsWith(m)&&t.category===b.category&&acc(t.account)?.scope===b.scope);
-   let spent=rel.reduce((x,t)=>x+(b.currency==='RSD'?txRsd(t):b.currency==='VND'?txVnd(t):conv(txRsd(t),'RSD','EUR')),0);
-   let p=Math.min(100,b.amount?spent/b.amount*100:0);
-   return `<div class="row"><div><strong>${b.category}</strong><small>${b.scope} · ${money(spent,b.currency)} of ${money(b.amount,b.currency)}</small><div class="budgetbar"><i style="width:${p}%"></i></div></div><button onclick="delBudget('${b.id}')">Delete</button></div>`
- }).join(''):'<div class="empty">No budgets yet</div>'
-}
-function fillSelects(){
- const grouped=['Personal bank accounts','Cash','JYS business accounts','Serbian bank accounts'];
- let ao=grouped.map(g=>{
-   let arr=S.accounts.filter(a=>(a.group||inferGroup(a))===g && !a.planned);
-   return arr.length?`<optgroup label="${g}">${arr.map(a=>`<option value="${a.id}">${a.name} · ${a.currency}</option>`).join('')}</optgroup>`:''
- }).join('');
- tacc.innerHTML=ao;tto.innerHTML=ao;
- let co=cats.map(c=>`<option>${c}</option>`).join('');tcat.innerHTML=co;bcat.innerHTML=co
-}
+function accountRow(a,edit){const b=bal(a.id),rs=conv(b,a.currency,'RSD'),vn=conv(b,a.currency,'VND');return `<div class="row ${a.planned?'planned':''}"><div><strong>${a.name}</strong><small>${a.type} · ${a.currency}${a.scope==='JYS Business'?' · JYS':''} ${a.planned?'<span class="badge planned-tag">PLANNED</span>':''}</small></div><div class="row-right">${a.planned?'<strong>Not opened yet</strong><div class="secondary">Excluded from balances</div>':`<strong>${money(b,a.currency)}</strong><div class="secondary">${money(rs,'RSD')} · ${money(vn,'VND')}</div>`}${edit?`<div class="actions" style="justify-content:flex-end;margin-top:5px"><button onclick="editAccount('${a.id}')">Edit</button>${REQUIRED.some(r=>r.id===a.id)?'':`<button onclick="delAccount('${a.id}')">Delete</button>`}</div>`:''}</div></div>`}
+function txRows(list,edit=false){return list.length?list.map(t=>{let a=acc(t.account),cl=t.type.toLowerCase(),sg=t.type==='Expense'?'−':t.type==='Income'?'+':'↔';let main=t.type==='Expense'?money(txRsd(t),'RSD'):(a?money(t.amount,a.currency):money(t.amount,'VND'));let pair=t.type==='Expense'&&a?.currency==='VND'?`${money(txVnd(t),'VND')} bank debit`:'';return `<div class="row"><div><strong>${t.desc||t.type}</strong><small>${t.date} · ${a?.name||''}${t.category?' · '+t.category:''}${t.receiptScanned?' · 📷 Receipt':''}</small></div><div class="row-right"><span class="amount ${cl}">${sg}${main}</span>${pair?`<div class="secondary">${pair}</div>`:''}${edit?`<div class="actions" style="justify-content:flex-end;margin-top:5px"><button onclick="editTx('${t.id}')">Edit</button><button onclick="delTx('${t.id}')">Delete</button></div>`:''}</div></div>`}).join(''):'<div class="empty">No transactions yet</div>'}
+function budgetRows(){let m=month();return S.budgets.length?S.budgets.map(b=>{let rel=S.tx.filter(t=>t.type==='Expense'&&t.date?.startsWith(m)&&t.category===b.category&&acc(t.account)?.scope===b.scope);let spent=rel.reduce((x,t)=>x+(b.currency==='RSD'?txRsd(t):b.currency==='VND'?txVnd(t):conv(txRsd(t),'RSD','EUR')),0);let p=Math.min(100,b.amount?spent/b.amount*100:0);return `<div class="row"><div><strong>${b.category}</strong><small>${b.scope} · ${money(spent,b.currency)} of ${money(b.amount,b.currency)}</small><div class="budgetbar"><i style="width:${p}%"></i></div></div><button onclick="delBudget('${b.id}')">Delete</button></div>`}).join(''):'<div class="empty">No budgets yet</div>'}
+function fillSelects(){const grouped=['Personal bank accounts','Cash','JYS business accounts','Serbian bank accounts'];let ao=grouped.map(g=>{let arr=S.accounts.filter(a=>(a.group||inferGroup(a))===g&&!a.planned);return arr.length?`<optgroup label="${g}">${arr.map(a=>`<option value="${a.id}">${a.name} · ${a.currency}</option>`).join('')}</optgroup>`:''}).join('');tacc.innerHTML=ao;tto.innerHTML=ao;let co=cats.map(c=>`<option>${c}</option>`).join('');tcat.innerHTML=co;bcat.innerHTML=co}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===b.dataset.v))});
-function openAccount(){aid.value='';aname.value='';agroup.value='Personal bank accounts';atype.value='Bank';acur.value='VND';abal.value=0;astatus.value='open';accountDlg.showModal()}
-function openPlannedSerbianAccount(){aid.value='';aname.value='';agroup.value='Serbian bank accounts';atype.value='Bank';acur.value='RSD';abal.value=0;astatus.value='planned';accountDlg.showModal()}
-function editAccount(id){let a=acc(id);if(!a)return;aid.value=a.id;aname.value=a.name;agroup.value=a.group||inferGroup(a);atype.value=a.type;acur.value=a.currency;abal.value=a.opening||0;astatus.value=a.planned?'planned':'open';accountDlg.showModal()}
-function saveAccount(e){
- e.preventDefault();let id=aid.value||crypto.randomUUID(),scope=agroup.value==='JYS business accounts'?'JYS Business':'Personal';
- let obj={id,name:aname.value.trim(),group:agroup.value,scope,type:atype.value,currency:acur.value,opening:+abal.value||0,planned:astatus.value==='planned'};
- let i=S.accounts.findIndex(a=>a.id===id);if(i>=0)S.accounts[i]=obj;else S.accounts.push(obj);accountDlg.close();save()
-}
-function delAccount(id){if(S.tx.some(t=>t.account===id||t.to===id))return alert('Delete this account’s transactions first.');if(confirm('Delete account?')){S.accounts=S.accounts.filter(a=>a.id!==id);save()}}
-let pendingReceiptText='';
-function openTx(fromScan=false){
- if(!S.accounts.filter(a=>!a.planned).length)return alert('Add or open an account first.');
- fillSelects();tdate.value=new Date().toISOString().slice(0,10);ttype.value='Expense';trsd.value='';tvnd.value='';tamount.value='';tdesc.value='';if(!fromScan)pendingReceiptText='';
- tacc.value='tpbank';txFormMode();txDlg.showModal()
-}
-function txFormMode(){
- const transfer=ttype.value==='Transfer', expense=ttype.value==='Expense';
- toWrap.style.display=transfer?'flex':'none';catWrap.style.display=transfer?'none':'flex';
- serbiaSpendBox.style.display=expense?'block':'none';regularAmountWrap.style.display=expense?'none':'flex';
- accountChanged()
-}
-function accountChanged(){
- const a=acc(tacc.value); if(!a)return;
- vndChargeWrap.style.display=(ttype.value==='Expense'&&a.currency==='VND')?'flex':'none';
- if(ttype.value==='Expense'&&a.currency==='RSD'){tvnd.value=''}
- updateEffective()
-}
-[trsd,tvnd].forEach(el=>el.addEventListener('input',updateEffective));
-function updateEffective(){
- const r=+trsd.value,v=+tvnd.value;
- if(r>0&&v>0)effectiveRate.textContent=`Actual card conversion: ${Math.round(v/r).toLocaleString()} VND per RSD`;
- else if(r>0){const est=conv(r,'RSD','VND');effectiveRate.textContent=`Reference-rate estimate: about ${money(est,'VND')}`}
- else effectiveRate.textContent=''
-}
-function saveTx(e){
- e.preventDefault();let a=acc(tacc.value);if(!a)return;
- if(ttype.value==='Transfer'&&tacc.value===tto.value)return alert('Choose different accounts.');
- let amount=0,rsdAmount=0,vndAmount=0;
- if(ttype.value==='Expense'){
-   rsdAmount=+trsd.value||0;vndAmount=+tvnd.value||0;
-   if(a.currency==='VND'){amount=vndAmount||conv(rsdAmount,'RSD','VND')}
-   else if(a.currency==='RSD'){amount=rsdAmount}
-   else amount=conv(rsdAmount,'RSD',a.currency);
-   if(amount<=0)return alert('Enter the RSD purchase amount, and for a Vietnamese card preferably the actual VND charge too.');
- }else{
-   amount=+tamount.value||0;if(amount<=0)return alert('Enter an amount.');
-   rsdAmount=conv(amount,a.currency,'RSD');vndAmount=conv(amount,a.currency,'VND');
- }
- S.tx.push({id:crypto.randomUUID(),type:ttype.value,date:tdate.value,account:tacc.value,to:ttype.value==='Transfer'?tto.value:'',amount,rsdAmount,vndAmount,category:ttype.value==='Transfer'?'':tcat.value,desc:tdesc.value.trim(),receiptScanned:!!pendingReceiptText,receiptText:pendingReceiptText.slice(0,1800)});
- txDlg.close();save()
-}
-function categoryRows(expenses){
- const sums={};for(const t of expenses){const c=t.category||'Other';sums[c]=(sums[c]||0)+txRsd(t)}
- const arr=Object.entries(sums).sort((a,b)=>b[1]-a[1]),total=arr.reduce((x,[,v])=>x+v,0);
- if(!arr.length)return '<div class="empty">No expenses this month yet</div>';
- return arr.map(([c,v])=>`<div class="catrow"><strong>${c}</strong><div class="catbar"><i style="width:${total?Math.max(2,v/total*100):0}%"></i></div><div class="row-right"><strong>${money(v,'RSD')}</strong><small>${total?Math.round(v/total*100):0}%</small></div></div>`).join('')+`<div class="help" style="margin-top:10px">Total categorized: ${money(total,'RSD')}</div>`
-}
-function receiptCategory(text){
- const x=text.toLowerCase();
- const rules=[
-  ['Food',/maxi|idea|lidl|univerexport|aroma|shop.?go|dis|market|pekara|bakery|restoran|restaurant|kafe|cafe|coffee|pizza|burger|hrana|food/],
-  ['Health',/apoteka|pharmacy|lek|medic|dm droger|lilly droger/],
-  ['Transport',/nis petrol|gazprom|omv|mol|fuel|gorivo|taxi|yandex|car:go|parking|prevoz|bus|gsp/],
-  ['Utilities',/eps|elektro|infostan|telekom|yettel|a1|internet|struja|voda/],
-  ['Shopping',/ikea|jysk|zara|h&m|reserved|sport vision|gigatron|tehnomanija|shopping|odeća|obuca|droger/],
-  ['Housing',/rent|kirija|stanarina/],
-  ['Education',/school|škola|kurs|course|book|knjiga/],
-  ['Travel',/hotel|booking|airbnb|airport|aerodrom|flight|avio/]
- ];
- for(const [c,r] of rules)if(r.test(x))return c;return 'Other'
-}
-function parseReceiptAmount(str){
- let m=String(str).replace(/\s/g,'').match(/\d{1,3}(?:\.\d{3})*(?:,\d{2})|\d+(?:,\d{2})|\d{2,7}/g)||[];
- return m.map(v=>{if(v.includes(','))return Number(v.replace(/\./g,'').replace(',','.'));return Number(v.replace(/\./g,''))}).filter(n=>Number.isFinite(n)&&n>0&&n<10000000)
-}
-function detectReceiptTotal(text){
- const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const priorities=[/za uplatu|ukupno za uplatu|total|ukupno|svega|iznos/i,/kartica|gotovina|pla[cć]anje/i];
- for(const r of priorities){let vals=[];for(const line of lines)if(r.test(line))vals.push(...parseReceiptAmount(line));if(vals.length)return Math.max(...vals)}
- let vals=[];for(const line of lines.slice(-12))vals.push(...parseReceiptAmount(line));return vals.length?Math.max(...vals):0
-}
-function detectReceiptDate(text){
- const m=text.match(/\b(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2})\b/);if(!m)return '';
- const d=String(m[1]).padStart(2,'0'),mo=String(m[2]).padStart(2,'0');return `${m[3]}-${mo}-${d}`
-}
-function detectMerchant(text){
- const skip=/fiskal|ra[cč]un|pib|id kupca|broj|datum|vreme|kasir|telefon|adresa|ukupno/i;
- const lines=text.split(/\r?\n/).map(x=>x.replace(/[^\p{L}\p{N} .,&'\-]/gu,'').trim()).filter(x=>x.length>=3&&!skip.test(x));
- return (lines.find(x=>/[A-Za-zČĆŠĐŽčćšđž]/.test(x))||'Receipt purchase').slice(0,70)
-}
-async function scanReceipt(input){
- const file=input.files&&input.files[0];if(!file)return;
- if(typeof Tesseract==='undefined'){alert('Receipt scanner could not load. Check internet connection and try again.');input.value='';return}
- receiptPreview.src=URL.createObjectURL(file);scanStatus.textContent='Reading receipt…';scanProgress.style.width='4%';scanDlg.showModal();
- try{
-  const result=await Tesseract.recognize(file,'eng',{logger:m=>{if(m.status==='recognizing text'&&Number.isFinite(m.progress)){scanProgress.style.width=`${Math.max(5,Math.round(m.progress*100))}%`;scanStatus.textContent=`Reading receipt… ${Math.round(m.progress*100)}%`}}});
-  const text=result?.data?.text||'';pendingReceiptText=text;const total=detectReceiptTotal(text),date=detectReceiptDate(text),merchant=detectMerchant(text),category=receiptCategory(text);
-  scanProgress.style.width='100%';scanStatus.textContent='Receipt read. Review the details before saving.';
-  scanDlg.close();openTx(true);if(total>0)trsd.value=String(total);if(date)tdate.value=date;tdesc.value=merchant;tcat.value=category;updateEffective();
- }catch(err){console.error(err);scanStatus.textContent='Could not read this receipt. Try a clearer, flatter photo with good light.';scanProgress.style.width='0%'}finally{input.value=''}
-}
-function delTx(id){if(confirm('Delete transaction?')){S.tx=S.tx.filter(t=>t.id!==id);save()}}
-function openBudget(){fillSelects();bamt.value='';budgetDlg.showModal()}
-function saveBudget(e){e.preventDefault();S.budgets.push({id:crypto.randomUUID(),scope:bscope.value,category:bcat.value,amount:+bamt.value,currency:bcur.value});budgetDlg.close();save()}
-function delBudget(id){S.budgets=S.budgets.filter(b=>b.id!==id);save()}
-function saveRates(){if(+rsd.value<=0||+vnd.value<=0)return alert('Rates must be positive.');S.settings.rates.RSD=+rsd.value;S.settings.rates.VND=+vnd.value;save()}
-function backup(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='triledger-backup.json';a.click()}
-async function restore(i){try{let x=JSON.parse(await i.files[0].text());if(confirm('Replace current data?')){S=x;migrateAccounts(S);save()}}catch{alert('Invalid backup')}}
-function resetAll(){if(confirm('Delete all local TriLedger data on this device and recreate your standard accounts?')){S=structuredClone(D);save()}}
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-render();
+function openAccount(){aid.value='';aname.value='';agroup.value='Personal bank accounts';atype.value='Bank';acur.value='VND';abal.value=0;astatus.value='open';accountDlg.showModal()}function openPlannedSerbianAccount(){aid.value='';aname.value='';agroup.value='Serbian bank accounts';atype.value='Bank';acur.value='RSD';abal.value=0;astatus.value='planned';accountDlg.showModal()}function editAccount(id){let a=acc(id);if(!a)return;aid.value=a.id;aname.value=a.name;agroup.value=a.group||inferGroup(a);atype.value=a.type;acur.value=a.currency;abal.value=a.opening||0;astatus.value=a.planned?'planned':'open';accountDlg.showModal()}
+function saveAccount(e){e.preventDefault();let id=aid.value||crypto.randomUUID(),scope=agroup.value==='JYS business accounts'?'JYS Business':'Personal';let obj={id,name:aname.value.trim(),group:agroup.value,scope,type:atype.value,currency:acur.value,opening:+abal.value||0,planned:astatus.value==='planned'};let i=S.accounts.findIndex(a=>a.id===id);if(i>=0)S.accounts[i]=obj;else S.accounts.push(obj);accountDlg.close();save()}function delAccount(id){if(S.tx.some(t=>t.account===id||t.to===id))return alert('Delete this account’s transactions first.');if(confirm('Delete account?')){S.accounts=S.accounts.filter(a=>a.id!==id);save()}}
+let pendingReceiptText='';let editingTxId='';
+function openTx(fromScan=false){editingTxId='';if(!S.accounts.filter(a=>!a.planned).length)return alert('Add or open an account first.');fillSelects();tdate.value=new Date().toISOString().slice(0,10);ttype.value='Expense';trsd.value='';tvnd.value='';tamount.value='';tdesc.value='';if(!fromScan)pendingReceiptText='';tacc.value='tpbank';txFormMode();txDlg.showModal()}
+function editTx(id){const t=S.tx.find(x=>x.id===id);if(!t)return;const a=acc(t.account);editingTxId=id;pendingReceiptText=t.receiptText||'';fillSelects();ttype.value=t.type||'Expense';tdate.value=t.date||new Date().toISOString().slice(0,10);tacc.value=t.account||'';tto.value=t.to||'';trsd.value=t.type==='Expense'?String(txRsd(t)||''):'';tvnd.value=t.type==='Expense'&&a?.currency==='VND'?String(+t.vndAmount||+t.amount||''):'';tamount.value=t.type==='Expense'?'':String(+t.amount||'');tdesc.value=t.desc||'';txFormMode();if(t.category)tcat.value=t.category;txDlg.showModal();updateEffective()}
+function txFormMode(){const transfer=ttype.value==='Transfer',expense=ttype.value==='Expense';toWrap.style.display=transfer?'flex':'none';catWrap.style.display=transfer?'none':'flex';serbiaSpendBox.style.display=expense?'block':'none';regularAmountWrap.style.display=expense?'none':'flex';accountChanged()}
+function accountChanged(){const a=acc(tacc.value);if(!a)return;vndChargeWrap.style.display=(ttype.value==='Expense'&&a.currency==='VND')?'flex':'none';if(ttype.value==='Expense'&&a.currency==='RSD'){tvnd.value=''}updateEffective()}
+[trsd,tvnd].forEach(el=>el.addEventListener('input',updateEffective));function updateEffective(){const r=+trsd.value,v=+tvnd.value;if(r>0&&v>0)effectiveRate.textContent=`Actual card conversion: ${Math.round(v/r).toLocaleString()} VND per RSD`;else if(r>0){const est=conv(r,'RSD','VND');effectiveRate.textContent=`Reference-rate estimate: about ${money(est,'VND')}`}else effectiveRate.textContent=''}
+function saveTx(e){e.preventDefault();let a=acc(tacc.value);if(!a)return;if(ttype.value==='Transfer'&&tacc.value===tto.value)return alert('Choose different accounts.');let amount=0,rsdAmount=0,vndAmount=0;if(ttype.value==='Expense'){rsdAmount=+trsd.value||0;vndAmount=+tvnd.value||0;if(a.currency==='VND'){amount=vndAmount||conv(rsdAmount,'RSD','VND')}else if(a.currency==='RSD'){amount=rsdAmount}else amount=conv(rsdAmount,'RSD',a.currency);if(amount<=0)return alert('Enter the RSD purchase amount, and for a Vietnamese card preferably the actual VND charge too.')}else{amount=+tamount.value||0;if(amount<=0)return alert('Enter an amount.');rsdAmount=conv(amount,a.currency,'RSD');vndAmount=conv(amount,a.currency,'VND')}const obj={id:editingTxId||crypto.randomUUID(),type:ttype.value,date:tdate.value,account:tacc.value,to:ttype.value==='Transfer'?tto.value:'',amount,rsdAmount,vndAmount,category:ttype.value==='Transfer'?'':tcat.value,desc:tdesc.value.trim(),receiptScanned:!!pendingReceiptText,receiptText:pendingReceiptText.slice(0,1800),rsdConfirmed:true};if(editingTxId){const i=S.tx.findIndex(x=>x.id===editingTxId);if(i>=0)S.tx[i]=obj}else S.tx.push(obj);editingTxId='';txDlg.close();save()}
+function categoryRows(expenses){const sums={};for(const t of expenses){const c=t.category||'Other';sums[c]=(sums[c]||0)+txRsd(t)}const arr=Object.entries(sums).sort((a,b)=>b[1]-a[1]),total=arr.reduce((x,[,v])=>x+v,0);if(!arr.length)return '<div class="empty">No expenses this month yet</div>';return arr.map(([c,v])=>`<div class="catrow"><strong>${c}</strong><div class="catbar"><i style="width:${total?Math.max(2,v/total*100):0}%"></i></div><div class="row-right"><strong>${money(v,'RSD')}</strong><small>${total?Math.round(v/total*100):0}%</small></div></div>`).join('')+`<div class="help" style="margin-top:10px">Total categorized: ${money(total,'RSD')}</div>`}
+function receiptCategory(text){const x=text.toLowerCase();const rules=[['Restaurant',/restoran|restaurant|bistro|grill|roštilj|rostilj|pizza|pizzeria|burger|ćevap|cevap|kafana|kuhinja/],['Cafe',/kafe|cafe|coffee|espresso|kapu[cč]ino|cappuccino|barista|coffee dream|kafeterija/],['Food',/maxi|idea|lidl|univerexport|aroma|shop.?go|dis|market|pekara|bakery|hrana|food|supermarket/],['Health',/apoteka|pharmacy|lek|medic|dm droger|lilly droger/],['Transport',/nis petrol|gazprom|omv|mol|fuel|gorivo|taxi|yandex|car:go|parking|prevoz|bus|gsp/],['Utilities',/eps|elektro|infostan|telekom|yettel|a1|internet|struja|voda/],['Shopping',/ikea|jysk|zara|h&m|reserved|sport vision|gigatron|tehnomanija|shopping|odeća|obuca|droger/],['Housing',/rent|kirija|stanarina/],['Education',/school|škola|kurs|course|book|knjiga/],['Travel',/hotel|booking|airbnb|airport|aerodrom|flight|avio/]];for(const [c,r] of rules)if(r.test(x))return c;return 'Other'}
+function parseReceiptAmount(str){const s=String(str).replace(/\u00a0/g,' ').trim();const matches=s.match(/\d{1,3}(?:[ .]\d{3})*(?:,\d{2})|\d+(?:,\d{2})|\d{1,7}(?:\.\d{2})?/g)||[];return matches.map(v=>{let x=v.replace(/\s/g,'');if(x.includes(',')&&x.includes('.'))x=x.replace(/\./g,'').replace(',','.');else if(x.includes(','))x=x.replace(',','.');else if(/^\d{1,3}(?:\.\d{3})+$/.test(x))x=x.replace(/\./g,'');return Number(x)}).filter(n=>Number.isFinite(n)&&n>0&&n<1000000)}
+function detectReceiptTotal(text){const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const strong=/ukupno\s+za\s+uplatu|za\s+uplatu|ukupan\s+iznos|total\s+amount|grand\s+total/i;const medium=/\bukupno\b|\btotal\b|\bsvega\b/i;const ignore=/pib|jmbg|broj\s+ra[cč]una|telefon|vreme|datum|pdv|tax|id\b/i;function fromLabel(rx){for(let i=0;i<lines.length;i++){if(!rx.test(lines[i])||ignore.test(lines[i]))continue;let vals=parseReceiptAmount(lines[i]);if(vals.length)return vals[vals.length-1];if(i+1<lines.length){vals=parseReceiptAmount(lines[i+1]);if(vals.length)return vals[0]}}return 0}let v=fromLabel(strong);if(v)return v;v=fromLabel(medium);if(v)return v;const tail=lines.slice(-10).filter(x=>!ignore.test(x));for(let i=tail.length-1;i>=0;i--){const vals=parseReceiptAmount(tail[i]);if(vals.length)return vals[vals.length-1]}return 0}
+function detectReceiptDate(text){const m=text.match(/\b(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2})\b/);if(!m)return '';const d=String(m[1]).padStart(2,'0'),mo=String(m[2]).padStart(2,'0');return `${m[3]}-${mo}-${d}`}
+function detectMerchant(text){const skip=/fiskal|ra[cč]un|pib|id kupca|broj|datum|vreme|kasir|telefon|adresa|ukupno/i;const lines=text.split(/\r?\n/).map(x=>x.replace(/[^\p{L}\p{N} .,&'\-]/gu,'').trim()).filter(x=>x.length>=3&&!skip.test(x));return (lines.find(x=>/[A-Za-zČĆŠĐŽčćšđž]/.test(x))||'Receipt purchase').slice(0,70)}
+async function scanReceipt(input){const file=input.files&&input.files[0];if(!file)return;if(typeof Tesseract==='undefined'){alert('Receipt scanner could not load. Check internet connection and try again.');input.value='';return}receiptPreview.src=URL.createObjectURL(file);scanStatus.textContent='Reading receipt…';scanProgress.style.width='4%';scanDlg.showModal();try{let result;const logger=m=>{if(m.status==='recognizing text'&&Number.isFinite(m.progress)){scanProgress.style.width=`${Math.max(5,Math.round(m.progress*100))}%`;scanStatus.textContent=`Reading receipt… ${Math.round(m.progress*100)}%`}};try{result=await Tesseract.recognize(file,'srp_latn+eng',{logger})}catch(langErr){console.warn('Serbian OCR fallback',langErr);result=await Tesseract.recognize(file,'eng',{logger})}const text=result?.data?.text||'';pendingReceiptText=text;const total=detectReceiptTotal(text),date=detectReceiptDate(text),merchant=detectMerchant(text),category=receiptCategory(text),confidence=Number(result?.data?.confidence||0);scanProgress.style.width='100%';scanStatus.textContent=confidence&&confidence<65?'Low-confidence scan — check the amount carefully.':'Receipt read. Review the details before saving.';scanDlg.close();openTx(true);if(total>0)trsd.value=String(total);if(date)tdate.value=date;tdesc.value=merchant;tcat.value=category;updateEffective()}catch(err){console.error(err);scanStatus.textContent='Could not read this receipt. Try a clearer, flatter photo with good light.';scanProgress.style.width='0%'}finally{input.value=''}}
+function delTx(id){if(confirm('Delete transaction?')){S.tx=S.tx.filter(t=>t.id!==id);save()}}function openBudget(){fillSelects();bamt.value='';budgetDlg.showModal()}function saveBudget(e){e.preventDefault();S.budgets.push({id:crypto.randomUUID(),scope:bscope.value,category:bcat.value,amount:+bamt.value,currency:bcur.value});budgetDlg.close();save()}function delBudget(id){S.budgets=S.budgets.filter(b=>b.id!==id);save()}function saveRates(){if(+rsd.value<=0||+vnd.value<=0)return alert('Rates must be positive.');S.settings.rates.RSD=+rsd.value;S.settings.rates.VND=+vnd.value;save()}function backup(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='triledger-backup.json';a.click()}async function restore(i){try{let x=JSON.parse(await i.files[0].text());if(confirm('Replace current data?')){S=x;migrateAccounts(S);save()}}catch{alert('Invalid backup')}}function resetAll(){if(confirm('Delete all local TriLedger data on this device and recreate your standard accounts?')){S=structuredClone(D);save()}}if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});render();

@@ -11,6 +11,22 @@ This repository owns navigation only. It does not duplicate application logic.
 | Public website and legacy routes | `https://www.jysenglish.com/` | [`Share1352/jysenglish-main-site-full`](https://github.com/Share1352/jysenglish-main-site-full) |
 | Staff and HR operations | `https://www.jysenglish.com/hr` | [`Share1352/jys-hr-management`](https://github.com/Share1352/jys-hr-management) |
 
+## What is in this repository
+
+| Path | What it is |
+| --- | --- |
+| `index.html` | The `app.jysenglish.com` landing page — links to the two wrappers below. |
+| `study/` | Wrapper that embeds the Student Study Hub from `share1352.github.io`. |
+| `teacher/` | Wrapper that embeds the Teacher Dashboard from `share1352.github.io`. |
+| `finance/` | **TriLedger**, a standalone personal-finance PWA served at `/finance/`. Not part of JYS navigation and not linked from `index.html`; it lives here only because this repo owns the `app.jysenglish.com` Pages deployment. It holds no keys and stores all data in the browser. Kept public deliberately — moving it would change its URL and orphan the installed PWA, which is an owner decision, not a cleanup. |
+| `scripts/` | `verify.mjs` (offline contract checks, run by `npm test`) and `health.mjs` (live HTTPS probes, `npm run health`). |
+| `CNAME`, `robots.txt`, `.nojekyll` | GitHub Pages configuration. |
+
+`finance/` ships exactly one entry script, `app.js`, plus the `stable-*.js`
+modules and `sw.js`. Cache-busting is done with a `?v=` query string, never by
+renaming the file. `npm test` fails if any `finance/*.js` is unreferenced or is
+named `*-vN.js`.
+
 ## Why this gateway exists
 
 - The deployed Wix Custom Embed snapshot can remain older than the repository source.
